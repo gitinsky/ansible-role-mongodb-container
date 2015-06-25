@@ -1,0 +1,30 @@
+- name: create ext volume for logs
+  file: state=directory path={{ ext_mongodb_logs_volume }}
+
+- name: create ext volume for configs
+  file: state=directory path={{ ext_mongodb_conf_volume }}
+
+- name: create ext volume for data
+  file: state=directory path={{ ext_mongodb_data_volume }}
+
+- name: put mongod.conf
+  template: src=mongod.conf dest={{ ext_mongodb_conf_volume }}/mongod.conf
+
+- name: check if a mongodb container is started
+  command: bash -c "docker ps | grep mongodb"
+  ignore_errors: True
+  register: result
+
+- name: start an hbase-master container
+  command: docker run
+            -d
+            -h {{ mongodb_hostname }}
+            --dns {{ docker_dns_2 }}
+            --dns {{ ansible_docker0.ipv4.address }}
+            -p=27018:27017
+            -v {{ ext_mongodb_conf_volume }}/mongod.conf:/etc/mongod.conf
+            -v {{ ext_mongodb_data_volume }}:/var/lib/mongodb
+            -v {{ ext_mongodb_logs_volume }}:/var/log/mongodb
+            --restart=always
+            --name=mongodb gitinsky/mongodb:0.1.0
+  when: result|failed
